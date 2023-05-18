@@ -12,6 +12,5 @@ fn load_cube() {
     let stl = stl_loader::read_stl(model_path("models/cube/cube-bin.stl"))
         .expect("failed to read STL file");
     // Expect 12 triangles (2 per face x 6 faces)
-    assert_eq!(12, stl.triangles.len());
-    println!("{:#?}", stl.triangles);
+    assert_eq!(12, stl.triangles());
 }

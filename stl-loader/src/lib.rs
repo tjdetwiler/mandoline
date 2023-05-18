@@ -4,32 +4,22 @@ use std::io::Seek;
 use std::path::Path;
 use zerocopy::AsBytes;
 
-#[derive(AsBytes, Copy, Clone, Debug, PartialEq)]
-#[repr(packed)]
-pub struct Vertex {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-}
-
-#[derive(AsBytes, Copy, Clone, Debug, PartialEq)]
-#[repr(packed)]
-pub struct Triangle {
-    pub normal: Vertex,
-    pub vertices: [Vertex; 3],
-    pub attribute_byte_count: u16,
-}
-
 pub struct StlFile {
-    pub triangles: Vec<Triangle>,
+    triangles: usize,
+    data: Vec<f32>,
 }
 
-fn read_vertex(f: &mut File) -> std::io::Result<Vertex> {
-    Ok(Vertex {
-        x: f.read_f32::<LittleEndian>()?,
-        y: f.read_f32::<LittleEndian>()?,
-        z: f.read_f32::<LittleEndian>()?,
-    })
+impl StlFile {
+    /// Returns the number of triangles included in the STL file.
+    ///
+    /// Each triangle is represented as 9 32-bit floating point numbers.
+    pub fn triangles(&self) -> usize {
+        self.triangles
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        self.data.as_bytes()
+    }
 }
 
 fn read_binary(f: &mut File) -> Result<StlFile, anyhow::Error> {
@@ -40,24 +30,34 @@ fn read_binary(f: &mut File) -> Result<StlFile, anyhow::Error> {
 
     // Immediately following the header is an unsigned 32-bit integer that indicates the
     // number of triagles that follow.
-    let n = f.read_u32::<LittleEndian>()?;
+    let n_triangles = f.read_u32::<LittleEndian>()? as usize;
 
-    let mut triangles = Vec::<Triangle>::with_capacity(n as usize);
-    for _ in 0..n {
+    // We have 9 floats for each triangle; x,y,z for each of the 3 vertices.
+    let mut data = Vec::<f32>::with_capacity(n_triangles * 3 * 3);
+    let mut slice_buf: [f32; 9] = Default::default();
+    for _ in 0..n_triangles {
         // Each triangle is specified by a normal vector followed by 3 verticies of the
         // triangle. While the normal vector may be included, it is generally expected
         // that verticies be listed in counter-clockwise order and so the normal vector
         // maybe specified as (0, 0, 0).
-        triangles.push(Triangle {
-            normal: read_vertex(f)?,
-            vertices: [read_vertex(f)?, read_vertex(f)?, read_vertex(f)?],
-            // After the triangle geometry there is a 2-byte unsigned integer called the
-            // "attribute byte count". There is no standard structure of this field, but
-            // some applications use this for color data.
-            attribute_byte_count: f.read_u16::<LittleEndian>()?,
-        });
+        let _normal = (
+            f.read_f32::<LittleEndian>()?,
+            f.read_f32::<LittleEndian>()?,
+            f.read_f32::<LittleEndian>()?,
+        );
+        for i in 0..9 {
+            slice_buf[i] = f.read_f32::<LittleEndian>()?;
+        }
+        data.extend_from_slice(&slice_buf);
+        // After the triangle geometry there is a 2-byte unsigned integer called the
+        // "attribute byte count". There is no standard structure of this field, but
+        // some applications use this for color data.
+        let _attribute_byte_count = f.read_u16::<LittleEndian>()?;
     }
-    Ok(StlFile { triangles })
+    Ok(StlFile {
+        triangles: n_triangles,
+        data,
+    })
 }
 
 pub fn read_stl<P: AsRef<Path>>(p: P) -> Result<StlFile, anyhow::Error> {
