@@ -1,3 +1,6 @@
 # Ignore target and Cargo.lock for crates by default.
 */target
 */Cargo.lock
+
+# Do allow Cargo.lock for binaries.
+!stl-viewer/Cargo.lock

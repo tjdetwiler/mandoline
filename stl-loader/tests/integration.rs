@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 fn model_path<P: AsRef<Path>>(path: P) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join(path)
+    Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join(path)
 }
 
 #[test]
