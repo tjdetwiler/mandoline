@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "stl-loader",
+    "stl-viewer",
+]
