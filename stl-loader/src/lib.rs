@@ -64,9 +64,3 @@ pub fn read_stl<P: AsRef<Path>>(p: P) -> Result<StlFile, anyhow::Error> {
     let mut f = std::fs::File::open(p)?;
     read_binary(&mut f)
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {}
-}
