@@ -12,3 +12,6 @@ pollster = "0.3.0"
 wgpu = "0.16.0"
 winit = "0.28.6"
 stl-loader = { path = "../stl-loader" }
+cgmath = "0.18.0"
+bytemuck_derive = "1.4.1"
+bytemuck = "1.13.1"
