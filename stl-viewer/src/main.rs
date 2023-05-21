@@ -78,6 +78,8 @@ struct CameraController {
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
+    active_mouse: Option<(winit::event::DeviceId, winit::dpi::PhysicalPosition<f64>)>,
+    last_mouse_position: winit::dpi::PhysicalPosition<f64>,
 }
 
 impl CameraController {
@@ -88,6 +90,8 @@ impl CameraController {
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
+            active_mouse: None,
+            last_mouse_position: winit::dpi::PhysicalPosition { x: 0.0, y: 0.0 },
         }
     }
 
@@ -124,12 +128,38 @@ impl CameraController {
                     _ => false,
                 }
             }
+            WindowEvent::MouseInput {
+                device_id,
+                state,
+                button,
+                ..
+            } if *button == winit::event::MouseButton::Left => {
+                self.active_mouse = match state {
+                    winit::event::ElementState::Pressed => {
+                        Some((*device_id, self.last_mouse_position))
+                    }
+                    winit::event::ElementState::Released => None,
+                };
+                true
+            }
+            WindowEvent::CursorMoved {
+                device_id,
+                position,
+                ..
+            } => {
+                if let Some((active_device_id, ..)) = self.active_mouse {
+                    if active_device_id == *device_id {
+                        self.active_mouse.as_mut().unwrap().1 = *position;
+                    }
+                }
+                true
+            }
             _ => false,
         }
     }
 
     // Move the camera in response to which keys are currently pressed.
-    fn update_camera(&self, camera: &mut Camera) {
+    fn update_camera(&mut self, camera: &mut Camera) {
         use cgmath::InnerSpace;
         // Compute a vector direction in which we're oriented.
         let forward = camera.target - camera.eye;
@@ -159,6 +189,25 @@ impl CameraController {
         }
         if self.is_left_pressed {
             camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
+        }
+
+        if let Some((_, mouse_position)) = self.active_mouse {
+            if mouse_position != self.last_mouse_position {
+                // If we have moved the mouse, we simply want to rotate the camera while still pointing at
+                // the same spot. This is similar to how we handle left/right (with additional support for
+                // vertical rotation) but we do need to include both dx and dy movements _before_ we
+                // normalize to get proper rotation around both axis.
+                //
+                // Note that we use the distance that the mouse has moved in screen coordinates to compute
+                // the distance of the move so that faster mouse movements result in faster rotations.
+                let dx =
+                    right * self.speed * (self.last_mouse_position.x - mouse_position.x) as f32;
+                let dy =
+                    camera.up * self.speed * (self.last_mouse_position.y - mouse_position.y) as f32;
+
+                camera.eye = camera.target - (forward - dx + dy).normalize() * forward_mag;
+                self.last_mouse_position = mouse_position;
+            }
         }
     }
 }
