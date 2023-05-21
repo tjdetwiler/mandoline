@@ -6,6 +6,11 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+// This is needed because wgpu uses Direct-X style coordinates while cgmath uses
+// OpenGL style coordinates.
+//
+// This matrix simply transforms the coordinates used by cgmath into the ones
+// that wgpu need.
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
@@ -14,38 +19,51 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
+pub const CAMERA_UNIFORM_BINDING: u32 = 0;
+
 trait BufferExt {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
+    fn desc() -> wgpu::VertexBufferLayout<'static>;
 }
 
 impl BufferExt for StlFile {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+    /// Describes the layout of the StlFile buffer.
+    ///
+    /// This is simply a contiguous vertex buffer so nothing too interesting
+    /// is happening here.
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: 12 as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                // Position
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-            ],
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
         }
     }
 }
 
 struct Camera {
+    // Where the camera is located.
     eye: cgmath::Point3<f32>,
+    // Where the camera is pointing.
     target: cgmath::Point3<f32>,
+    // The orientation of the camera.
     up: cgmath::Vector3<f32>,
+    // The aspect ratio of the scene (width:height).
     aspect: f32,
+    // The horizontal field of view.
     fovy: f32,
+    // Near and far clipping planes.
     znear: f32,
     zfar: f32,
 }
 
 impl Camera {
+    /// Builds the view projection matrix.
+    ///
+    /// This (I think) is what is used by the GPU to map view coordinates into
+    /// screen coordinates.
     fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
         let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
@@ -53,6 +71,7 @@ impl Camera {
     }
 }
 
+// Simple controls for camera movement.
 struct CameraController {
     speed: f32,
     is_forward_pressed: bool,
@@ -72,6 +91,7 @@ impl CameraController {
         }
     }
 
+    // Read input events and update state based on which keys are pressed.
     fn process_events(&mut self, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput {
@@ -108,8 +128,10 @@ impl CameraController {
         }
     }
 
+    // Move the camera in response to which keys are currently pressed.
     fn update_camera(&self, camera: &mut Camera) {
         use cgmath::InnerSpace;
+        // Compute a vector direction in which we're oriented.
         let forward = camera.target - camera.eye;
         let forward_norm = forward.normalize();
         let forward_mag = forward.magnitude();
@@ -125,7 +147,7 @@ impl CameraController {
 
         let right = forward_norm.cross(camera.up);
 
-        // Redo radius calc in case the fowrard/backward is pressed.
+        // Redo radius calc in case the forward/backward is pressed.
         let forward = camera.target - camera.eye;
         let forward_mag = forward.magnitude();
 
@@ -176,6 +198,10 @@ impl CameraUniform {
         }
     }
 
+    /// Updates the view projection in our uniform buffer using the camera.
+    ///
+    /// By placing this in a uniform buffer, we make this matrix available to
+    /// our vertex shader.
     fn update_view_proj(&mut self, camera: &Camera) {
         self.view_proj = camera.build_view_projection_matrix().into();
     }
@@ -247,13 +273,18 @@ impl State {
         };
         surface.configure(&device, &config);
 
+        // Initialize our camera.
         let camera = Camera {
-            // position the camera one unit up and 2 units back
-            // +z is out of the screen
+            // This is currently hard-coded to be in a location so that the
+            // test cube will be visible.
+            //
+            // TODO: choose a position and orientation based on the values in
+            // the STL file (ex: to ensure the entire model will fit into the
+            // FOV).
             eye: (0.0, 5.0, 40.0).into(),
-            // have it look at the origin
+            // Look at the origin.
             target: (0.0, 0.0, 0.0).into(),
-            // which way is "up"
+            // Use 'y' as the vertical axis.
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
             fovy: 45.0,
@@ -261,19 +292,26 @@ impl State {
             zfar: 100.0,
         };
 
+        // Create the uniform buffer containing the camera's view projection
+        // matrix.
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
-
+        // Create the wgpu buffer so that we can expose the matrix to our
+        // shader.
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
             contents: bytemuck::cast_slice(&[camera_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-
+        // The bind group is how we can identify this buffer within our shader.
+        //
+        // Ex:
+        //     @group(0) @binding(0)
+        //     var<uniform> camera: CameraUniform;
         let camera_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
+                    binding: CAMERA_UNIFORM_BINDING,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -284,11 +322,10 @@ impl State {
                 }],
                 label: Some("camera_bind_group_layout"),
             });
-
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
-                binding: 0,
+                binding: CAMERA_UNIFORM_BINDING,
                 resource: camera_buffer.as_entire_binding(),
             }],
             label: Some("camera_bind_group"),
@@ -297,10 +334,11 @@ impl State {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&camera_bind_group_layout],
+                bind_group_layouts: &[/* bind_group = 0 */ &camera_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
+        // Load our shaders and setup the render pipeline.
         let shader = device.create_shader_module(wgpu::include_wgsl!("stl.wgsl"));
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -322,7 +360,7 @@ impl State {
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw, // 2.
+                front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
@@ -331,13 +369,13 @@ impl State {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            depth_stencil: None, // 1.
+            depth_stencil: None,
             multisample: wgpu::MultisampleState {
-                count: 1,                         // 2.
-                mask: !0,                         // 3.
-                alpha_to_coverage_enabled: false, // 4.
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
             },
-            multiview: None, // 5.
+            multiview: None,
         });
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
