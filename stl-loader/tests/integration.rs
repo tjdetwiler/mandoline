@@ -1,16 +1,9 @@
-use std::path::{Path, PathBuf};
-
-fn model_path<P: AsRef<Path>>(path: P) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join(path)
-}
+const STL_CUBE: &[u8] = include_bytes!("../../res/cube/cube-bin.stl");
 
 #[test]
-fn load_cube() {
-    let stl =
-        stl_loader::read_stl(model_path("res/cube/cube-bin.stl")).expect("failed to read STL file");
+#[wasm_bindgen_test::wasm_bindgen_test]
+fn parse_cube() {
+    let stl = stl_loader::parse_stl(STL_CUBE).unwrap();
     // Expect 12 triangles (2 per face x 6 faces)
     assert_eq!(12, stl.triangles());
 }
