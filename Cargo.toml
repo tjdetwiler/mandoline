@@ -1,6 +1,6 @@
 [workspace]
 
 members = [
-    "stl-loader",
-    "stl-viewer",
+    "crates/stl-loader",
+    "crates/stl-viewer",
 ]

@@ -8,8 +8,6 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-mod resources;
-
 // This is needed because wgpu uses Direct-X style coordinates while cgmath uses
 // OpenGL style coordinates.
 //
@@ -585,10 +583,7 @@ pub async fn run() {
         }
     }
 
-    let model = resources::load_binary("cube-bin.stl").await.unwrap();
-    println!("Got {} bytes", model.len());
-    let stl_file = stl_loader::parse_stl(&model).unwrap();
-
+    let stl_file = stl_loader::parse_stl(include_bytes!("../../../res/cube/cube-bin.stl")).unwrap();
     let event_loop = EventLoop::new(); // Loop provided by winit for handling window events
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 

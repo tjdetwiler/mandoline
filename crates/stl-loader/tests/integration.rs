@@ -1,4 +1,4 @@
-const STL_CUBE: &[u8] = include_bytes!("../../res/cube/cube-bin.stl");
+const STL_CUBE: &[u8] = include_bytes!("../../../res/cube/cube-bin.stl");
 
 #[test]
 #[wasm_bindgen_test::wasm_bindgen_test]
