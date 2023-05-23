@@ -44,8 +44,8 @@ fn read_binary<T: Read + Seek>(f: &mut T) -> std::io::Result<StlFile> {
             f.read_f32::<LittleEndian>()?,
             f.read_f32::<LittleEndian>()?,
         );
-        for i in 0..9 {
-            slice_buf[i] = f.read_f32::<LittleEndian>()?;
+        for float in &mut slice_buf {
+            *float = f.read_f32::<LittleEndian>()?;
         }
         data.extend_from_slice(&slice_buf);
         // After the triangle geometry there is a 2-byte unsigned integer called the

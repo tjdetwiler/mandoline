@@ -7,8 +7,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     let mut copy_options = CopyOptions::new();
     copy_options.overwrite = true;
-    let mut paths_to_copy = Vec::new();
-    paths_to_copy.push("res/");
+    let paths_to_copy = vec!["res/"];
     copy_items(&paths_to_copy, "pkg", &copy_options)?;
     Ok(())
 }

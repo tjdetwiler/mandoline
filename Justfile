@@ -16,6 +16,8 @@ test-all: test test-wasm
 
 # Lint/style checks.
 lint:
+    cargo clippy
+    cargo clippy --target=wasm32-unknown-unknown
     cargo fmt --check
 
 # Run code formatters.
