@@ -1,0 +1,7 @@
+{
+    // Tell rust anayzer to check both the host and wasm builds.
+    //
+    // TODO: ideally we can have a more generic way to specify the host triple,
+    // but for now I'm just hard-coding for arm-based Macs.
+    "rust-analyzer.check.targets": ["aarch64-apple-darwin", "wasm32-unknown-unknown"]
+}
