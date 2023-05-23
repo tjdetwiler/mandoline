@@ -14,6 +14,17 @@ test-wasm:
     cargo test --target=wasm32-unknown-unknown
 test-all: test test-wasm
 
+# Populate wasm files in stl-viewer/pkg
+package-wasm:
+    cd stl-viewer && wasm-pack build --target web
+
+# Run the native application.
+run:
+    cargo run
+# Run the wgpu application.
+run-wasm: package-wasm
+	python -m http.server --directory stl-viewer/pkg 8000
+
 # Lint/style checks.
 lint:
     cargo clippy
