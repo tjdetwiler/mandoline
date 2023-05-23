@@ -5,9 +5,12 @@ fn format_url(file_name: &str) -> reqwest::Url {
     let window = web_sys::window().unwrap();
     let location = window.location();
     let origin = location.origin().unwrap();
-    reqwest::Url::parse(&format!("{}/", origin,)).unwrap()
-        .join("res/").unwrap()
-        .join(file_name).unwrap()
+    reqwest::Url::parse(&format!("{}/", origin,))
+        .unwrap()
+        .join("res/")
+        .unwrap()
+        .join(file_name)
+        .unwrap()
 }
 
 pub async fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {

@@ -1,5 +1,5 @@
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::io::{Seek, Read};
+use std::io::{Read, Seek};
 use std::path::Path;
 use zerocopy::AsBytes;
 
@@ -69,11 +69,11 @@ pub fn parse_stl(data: &[u8]) -> std::io::Result<StlFile> {
     read_binary(&mut c)
 }
 
-pub trait StlReader : Read {
+pub trait StlReader: Read {
     fn read_stl(&mut self) -> std::io::Result<StlFile>;
 }
 
-impl <T: Read + Seek> StlReader for T {
+impl<T: Read + Seek> StlReader for T {
     fn read_stl(&mut self) -> std::io::Result<StlFile> {
         read_binary(self)
     }

@@ -618,3 +618,10 @@ pub async fn run() {
         state.handle_event(event, control_flow);
     });
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    fn it_works() {}
+}
