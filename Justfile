@@ -1,17 +1,21 @@
 @default: run-presubmit
 
-# Build targets for both host and wasm.
+# Build for host (native)
 build:
     cargo build
+# Build for wasm
 build-wasm:
     cargo build --target=wasm32-unknown-unknown
+# Build both native and wasm.
 build-all: build build-wasm
 
-# Test targets for both host and wasm.
+# Test host (native)
 test:
     cargo test 
+# Test wasm
 test-wasm:
     cargo test --target=wasm32-unknown-unknown
+# Test both native and wasm.
 test-all: test test-wasm
 
 # Populate wasm files in stl-viewer/pkg
