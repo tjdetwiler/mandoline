@@ -1,6 +1,5 @@
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::fs::File;
-use std::io::Seek;
+use std::io::{Seek, Read};
 use std::path::Path;
 use zerocopy::AsBytes;
 
@@ -22,7 +21,7 @@ impl StlFile {
     }
 }
 
-fn read_binary(f: &mut File) -> Result<StlFile, anyhow::Error> {
+fn read_binary<T: Read + Seek>(f: &mut T) -> std::io::Result<StlFile> {
     // Binary files start with an 80 byte header. There is no defined structure for this
     // header but some implementations will stash some metadata in this header. For now
     // we'll just skip the header and load the geometry.
@@ -60,7 +59,22 @@ fn read_binary(f: &mut File) -> Result<StlFile, anyhow::Error> {
     })
 }
 
-pub fn read_stl<P: AsRef<Path>>(p: P) -> Result<StlFile, anyhow::Error> {
+pub fn read_stl<P: AsRef<Path>>(p: P) -> std::io::Result<StlFile> {
     let mut f = std::fs::File::open(p)?;
     read_binary(&mut f)
+}
+
+pub fn parse_stl(data: &[u8]) -> std::io::Result<StlFile> {
+    let mut c = std::io::Cursor::new(data);
+    read_binary(&mut c)
+}
+
+pub trait StlReader : Read {
+    fn read_stl(&mut self) -> std::io::Result<StlFile>;
+}
+
+impl <T: Read + Seek> StlReader for T {
+    fn read_stl(&mut self) -> std::io::Result<StlFile> {
+        read_binary(self)
+    }
 }

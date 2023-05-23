@@ -1,3 +1,3 @@
 fn main() {
-    stl_viewer::run();
+    pollster::block_on(stl_viewer::run());
 }

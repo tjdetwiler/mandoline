@@ -8,6 +8,8 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+mod resources;
+
 // This is needed because wgpu uses Direct-X style coordinates while cgmath uses
 // OpenGL style coordinates.
 //
@@ -287,7 +289,7 @@ impl State {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::POLYGON_MODE_LINE,
+                    features: wgpu::Features::empty(),
                     // WebGL doesn't support all of wgpu's features, so if
                     // we're building for the web we'll have to disable some.
                     limits: if cfg!(target_arch = "wasm32") {
@@ -573,17 +575,19 @@ impl State {
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-pub fn run() {
+pub async fn run() {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
+            console_log::init_with_level(log::Level::Info).expect("Couldn't initialize logger");
         } else {
             env_logger::init();
         }
     }
 
-    let stl_file = stl_loader::read_stl("../models/cube/cube-bin.stl").unwrap();
+    let model = resources::load_binary("cube-bin.stl").await.unwrap();
+    println!("Got {} bytes", model.len());
+    let stl_file = stl_loader::parse_stl(&model).unwrap();
 
     let event_loop = EventLoop::new(); // Loop provided by winit for handling window events
     let window = WindowBuilder::new().build(&event_loop).unwrap();
@@ -607,7 +611,7 @@ pub fn run() {
             .expect("Couldn't append canvas to document body.");
     }
 
-    let mut state = pollster::block_on(State::new(window, &stl_file));
+    let mut state = State::new(window, &stl_file).await;
 
     // Opens the window and starts processing events (although no events are handled yet)
     event_loop.run(move |event, _, control_flow| {
