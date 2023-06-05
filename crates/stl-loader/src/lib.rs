@@ -19,6 +19,15 @@ impl StlFile {
     pub fn as_bytes(&self) -> &[u8] {
         self.data.as_bytes()
     }
+
+    pub fn as_floats(&self) -> &[f32] {
+        &self.data
+    }
+
+    pub fn into_inner(self) -> Vec<f32> {
+        let StlFile { data, .. } = self;
+        data
+    }
 }
 
 fn read_binary<T: Read + Seek>(f: &mut T) -> std::io::Result<StlFile> {

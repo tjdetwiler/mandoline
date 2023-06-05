@@ -1584,6 +1584,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slicer"
+version = "0.1.0"
+dependencies = [
+ "cgmath",
+ "static_assertions",
+ "stl-loader",
+]
+
+[[package]]
 name = "slotmap"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
