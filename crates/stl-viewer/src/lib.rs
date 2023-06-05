@@ -1,4 +1,4 @@
-use stl_loader::StlFile;
+use mesh::{Triangle, TriangleMesh, VertexIndex};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
@@ -27,7 +27,7 @@ trait BufferExt {
     fn desc() -> wgpu::VertexBufferLayout<'static>;
 }
 
-impl BufferExt for StlFile {
+impl BufferExt for VertexIndex {
     /// Describes the layout of the StlFile buffer.
     ///
     /// This is simply a contiguous vertex buffer so nothing too interesting
@@ -258,9 +258,18 @@ impl CameraUniform {
     }
 }
 
+fn triangles_as_bytes(triangles: &[Triangle]) -> &[u8] {
+    unsafe {
+        let (prefix, bytes, suffix) = triangles.align_to();
+        debug_assert!(prefix.is_empty());
+        debug_assert!(suffix.is_empty());
+        bytes
+    }
+}
+
 impl State {
     // Creating some of the wgpu types requires async code
-    async fn new(window: Window, stl: &stl_loader::StlFile) -> Self {
+    async fn new<T: TriangleMesh>(window: Window, stl: &T) -> Self {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
@@ -396,7 +405,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[StlFile::desc()],
+                buffers: &[VertexIndex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -430,11 +439,11 @@ impl State {
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: stl.as_bytes(),
+            contents: triangles_as_bytes(stl.as_triangle_slice().unwrap()),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let num_vertices = (stl.triangles() * 3) as u32;
+        let num_vertices = (stl.triangle_count() * 3) as u32;
         let camera_controller = CameraController::new(0.2);
         Self {
             window,
@@ -583,7 +592,9 @@ pub async fn run() {
         }
     }
 
-    let stl_file = stl_loader::parse_stl(include_bytes!("../../../res/cube/cube-bin.stl")).unwrap();
+    let stl_file =
+        stl_loader::parse_stl::<VertexIndex>(include_bytes!("../../../res/cube/cube-bin.stl"))
+            .unwrap();
     let event_loop = EventLoop::new(); // Loop provided by winit for handling window events
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 

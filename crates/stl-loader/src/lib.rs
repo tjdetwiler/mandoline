@@ -1,36 +1,9 @@
 use byteorder::{LittleEndian, ReadBytesExt};
+use mesh::TriangleMesh;
 use std::io::{Read, Seek};
 use std::path::Path;
-use zerocopy::AsBytes;
 
-pub struct StlFile {
-    triangles: usize,
-    data: Vec<f32>,
-}
-
-impl StlFile {
-    /// Returns the number of triangles included in the STL file.
-    ///
-    /// Each triangle is represented as 9 32-bit floating point numbers.
-    pub fn triangles(&self) -> usize {
-        self.triangles
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.data.as_bytes()
-    }
-
-    pub fn as_floats(&self) -> &[f32] {
-        &self.data
-    }
-
-    pub fn into_inner(self) -> Vec<f32> {
-        let StlFile { data, .. } = self;
-        data
-    }
-}
-
-fn read_binary<T: Read + Seek>(f: &mut T) -> std::io::Result<StlFile> {
+fn read_binary<M: TriangleMesh, T: Read + Seek>(f: &mut T) -> std::io::Result<M> {
     // Binary files start with an 80 byte header. There is no defined structure for this
     // header but some implementations will stash some metadata in this header. For now
     // we'll just skip the header and load the geometry.
@@ -62,28 +35,25 @@ fn read_binary<T: Read + Seek>(f: &mut T) -> std::io::Result<StlFile> {
         // some applications use this for color data.
         let _attribute_byte_count = f.read_u16::<LittleEndian>()?;
     }
-    Ok(StlFile {
-        triangles: n_triangles,
-        data,
-    })
+    Ok(M::from_triangles(data).unwrap())
 }
 
-pub fn read_stl<P: AsRef<Path>>(p: P) -> std::io::Result<StlFile> {
+pub fn read_stl<M: TriangleMesh, P: AsRef<Path>>(p: P) -> std::io::Result<M> {
     let mut f = std::fs::File::open(p)?;
     read_binary(&mut f)
 }
 
-pub fn parse_stl(data: &[u8]) -> std::io::Result<StlFile> {
+pub fn parse_stl<M: TriangleMesh>(data: &[u8]) -> std::io::Result<M> {
     let mut c = std::io::Cursor::new(data);
     read_binary(&mut c)
 }
 
 pub trait StlReader: Read {
-    fn read_stl(&mut self) -> std::io::Result<StlFile>;
+    fn read_stl<M: TriangleMesh>(&mut self) -> std::io::Result<M>;
 }
 
 impl<T: Read + Seek> StlReader for T {
-    fn read_stl(&mut self) -> std::io::Result<StlFile> {
+    fn read_stl<M: TriangleMesh>(&mut self) -> std::io::Result<M> {
         read_binary(self)
     }
 }

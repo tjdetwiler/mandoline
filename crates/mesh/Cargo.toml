@@ -8,6 +8,6 @@ edition = "2021"
 [dependencies]
 cgmath = "0.18.0"
 static_assertions = "1.1.0"
-# TODO: Ideally we can invert the dependency such that stl-loader can
-# vend a mesh.
+
+[dev-dependencies]
 stl-loader = { path = "../stl-loader" }
