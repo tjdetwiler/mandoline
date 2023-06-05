@@ -1,4 +1,4 @@
-use mesh::{Triangle, TriangleMesh, VertexIndex};
+use mandoline_mesh::{Triangle, TriangleMesh, VertexIndex};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
@@ -593,7 +593,7 @@ pub async fn run() {
     }
 
     let stl_file =
-        stl_loader::parse_stl::<VertexIndex>(include_bytes!("../../../res/cube/cube-bin.stl"))
+        mandoline_stl::parse_stl::<VertexIndex>(include_bytes!("../../../res/cube/cube-bin.stl"))
             .unwrap();
     let event_loop = EventLoop::new(); // Loop provided by winit for handling window events
     let window = WindowBuilder::new().build(&event_loop).unwrap();

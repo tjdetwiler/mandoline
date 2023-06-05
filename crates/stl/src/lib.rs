@@ -1,5 +1,5 @@
 use byteorder::{LittleEndian, ReadBytesExt};
-use mesh::TriangleMesh;
+use mandoline_mesh::TriangleMesh;
 use std::io::{Read, Seek};
 use std::path::Path;
 

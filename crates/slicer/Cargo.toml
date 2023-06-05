@@ -1,5 +1,5 @@
 [package]
-name = "slicer"
+name = "mandoline"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 cgmath = "0.18.0"
 static_assertions = "1.1.0"
-stl-loader = { path = "../stl-loader" }
-mesh = { path = "../mesh" }
+mandoline-stl = { path = "../stl" }
+mandoline-mesh = { path = "../mesh" }

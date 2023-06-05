@@ -3,6 +3,6 @@
 members = [
     "crates/mesh",
     "crates/slicer",
-    "crates/stl-loader",
+    "crates/stl",
     "crates/stl-viewer",
 ]

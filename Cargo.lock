@@ -926,6 +926,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "mandoline"
+version = "0.1.0"
+dependencies = [
+ "cgmath",
+ "mandoline-mesh",
+ "mandoline-stl",
+ "static_assertions",
+]
+
+[[package]]
+name = "mandoline-mesh"
+version = "0.1.0"
+dependencies = [
+ "cgmath",
+ "mandoline-stl",
+ "static_assertions",
+]
+
+[[package]]
+name = "mandoline-stl"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "byteorder",
+ "mandoline-mesh",
+ "wasm-bindgen-test",
+]
+
+[[package]]
+name = "mandoline-stl-viewer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "bytemuck_derive",
+ "cfg-if",
+ "cgmath",
+ "console_error_panic_hook",
+ "console_log",
+ "env_logger",
+ "fs_extra",
+ "log",
+ "mandoline-mesh",
+ "mandoline-stl",
+ "pollster",
+ "reqwest",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -947,15 +1002,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "mesh"
-version = "0.1.0"
-dependencies = [
- "cgmath",
- "static_assertions",
- "stl-loader",
 ]
 
 [[package]]
@@ -1593,16 +1639,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "slicer"
-version = "0.1.0"
-dependencies = [
- "cgmath",
- "mesh",
- "static_assertions",
- "stl-loader",
-]
-
-[[package]]
 name = "slotmap"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1661,42 +1697,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "stl-loader"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "byteorder",
- "mesh",
- "wasm-bindgen-test",
-]
-
-[[package]]
-name = "stl-viewer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "bytemuck_derive",
- "cfg-if",
- "cgmath",
- "console_error_panic_hook",
- "console_log",
- "env_logger",
- "fs_extra",
- "log",
- "mesh",
- "pollster",
- "reqwest",
- "stl-loader",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
- "wgpu",
- "winit",
-]
 
 [[package]]
 name = "strict-num"

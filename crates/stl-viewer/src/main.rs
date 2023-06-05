@@ -1,3 +1,3 @@
 fn main() {
-    pollster::block_on(stl_viewer::run());
+    pollster::block_on(mandoline_stl_viewer::run());
 }
