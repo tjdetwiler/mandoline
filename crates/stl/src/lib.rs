@@ -1,5 +1,5 @@
 use byteorder::{LittleEndian, ReadBytesExt};
-use mandoline_mesh::TriangleMesh;
+use mandoline_mesh::{Triangle, TriangleMesh, Vector3};
 use std::io::{Read, Seek};
 use std::path::Path;
 
@@ -14,8 +14,7 @@ fn read_binary<M: TriangleMesh, T: Read + Seek>(f: &mut T) -> std::io::Result<M>
     let n_triangles = f.read_u32::<LittleEndian>()? as usize;
 
     // We have 9 floats for each triangle; x,y,z for each of the 3 vertices.
-    let mut data = Vec::<f32>::with_capacity(n_triangles * 3 * 3);
-    let mut slice_buf: [f32; 9] = Default::default();
+    let mut data = Vec::<Triangle>::with_capacity(n_triangles);
     for _ in 0..n_triangles {
         // Each triangle is specified by a normal vector followed by 3 verticies of the
         // triangle. While the normal vector may be included, it is generally expected
@@ -26,16 +25,29 @@ fn read_binary<M: TriangleMesh, T: Read + Seek>(f: &mut T) -> std::io::Result<M>
             f.read_f32::<LittleEndian>()?,
             f.read_f32::<LittleEndian>()?,
         );
-        for float in &mut slice_buf {
-            *float = f.read_f32::<LittleEndian>()?;
-        }
-        data.extend_from_slice(&slice_buf);
+        data.push(Triangle {
+            p0: Vector3 {
+                x: f.read_f32::<LittleEndian>()?,
+                y: f.read_f32::<LittleEndian>()?,
+                z: f.read_f32::<LittleEndian>()?,
+            },
+            p1: Vector3 {
+                x: f.read_f32::<LittleEndian>()?,
+                y: f.read_f32::<LittleEndian>()?,
+                z: f.read_f32::<LittleEndian>()?,
+            },
+            p2: Vector3 {
+                x: f.read_f32::<LittleEndian>()?,
+                y: f.read_f32::<LittleEndian>()?,
+                z: f.read_f32::<LittleEndian>()?,
+            },
+        });
         // After the triangle geometry there is a 2-byte unsigned integer called the
         // "attribute byte count". There is no standard structure of this field, but
         // some applications use this for color data.
         let _attribute_byte_count = f.read_u16::<LittleEndian>()?;
     }
-    Ok(M::from_triangles(data).unwrap())
+    Ok(M::from_triangles(data))
 }
 
 pub fn read_stl<M: TriangleMesh, P: AsRef<Path>>(p: P) -> std::io::Result<M> {

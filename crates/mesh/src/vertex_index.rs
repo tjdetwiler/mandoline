@@ -40,30 +40,26 @@ pub struct VertexIndex {
 }
 
 impl TriangleMesh for VertexIndex {
-    fn from_triangles(points: Vec<f32>) -> Option<Self> {
-        if points.len() % 9 != 0 {
-            return None;
-        }
-
-        // Safety: we have a raw vector of f32 floating point numbers, where each triangle is
-        // represented as 3 consecutive floats. We want to convert this to a vector of Vector3
-        // which has the same layout as a vector of f32, just with a 12 byte stride instead of
-        // 4b (and of course 1/3 of the length).
+    fn from_triangles(triangles: Vec<Triangle>) -> Self {
+        // Safety: we have a raw vector of Triangles where each triangle is represented as 3
+        // `Vector3`s. The Triangle struct is `repr(C)` so we rely on the fact that we can just
+        // transmute this struct into a contiguous `Vector3`s.
         //
         // We use manually drop to prevent rust from deleting the vector storage. This is safe
         // because we pass the pointer to a new vector that will handle deleting on drop.
+        let facets = triangles.len() as u32;
         let points: Vec<Vector3> = unsafe {
-            let mut points = std::mem::ManuallyDrop::new(points);
-            let len = points.len();
-            let ptr = points.as_mut_ptr();
-            Vec::from_raw_parts(std::mem::transmute(ptr), len / 3, len / 3)
+            let mut triangles = std::mem::ManuallyDrop::new(triangles);
+            let len = triangles.len();
+            let ptr = triangles.as_mut_ptr();
+            Vec::from_raw_parts(std::mem::transmute(ptr), len * 3, len * 3)
         };
-        Some(VertexIndex {
+        VertexIndex {
             // STL files provide one point for every facet vertex, so this is simply an identity
             // mapping (ex: facet[i] == i).
             //
             // As a future optimization we should de-duplicate the points vector.
-            facets: (0..points.len() as u32 / 3)
+            facets: (0..facets)
                 .map(|i| Facet {
                     p0: 3 * i,
                     p1: 3 * i + 1,
@@ -71,7 +67,7 @@ impl TriangleMesh for VertexIndex {
                 })
                 .collect(),
             points,
-        })
+        }
     }
 
     fn triangle_count(&self) -> usize {
