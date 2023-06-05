@@ -1,5 +1,5 @@
 [package]
-name = "slicer"
+name = "mesh"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 cgmath = "0.18.0"
 static_assertions = "1.1.0"
+# TODO: Ideally we can invert the dependency such that stl-loader can
+# vend a mesh.
 stl-loader = { path = "../stl-loader" }
-mesh = { path = "../mesh" }

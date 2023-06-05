@@ -950,6 +950,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mesh"
+version = "0.1.0"
+dependencies = [
+ "cgmath",
+ "static_assertions",
+ "stl-loader",
+]
+
+[[package]]
 name = "metal"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1588,6 +1597,7 @@ name = "slicer"
 version = "0.1.0"
 dependencies = [
  "cgmath",
+ "mesh",
  "static_assertions",
  "stl-loader",
 ]
