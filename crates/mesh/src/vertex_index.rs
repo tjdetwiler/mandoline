@@ -7,6 +7,23 @@ pub struct Facet {
     pub p2: u32,
 }
 
+pub struct Facets<'a> {
+    inner: std::slice::Iter<'a, Facet>,
+    vertex_index: &'a VertexIndex,
+}
+
+impl<'a> Iterator for Facets<'a> {
+    type Item = Triangle;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|f| Triangle {
+            p0: self.vertex_index.points[f.p0 as usize],
+            p1: self.vertex_index.points[f.p1 as usize],
+            p2: self.vertex_index.points[f.p2 as usize],
+        })
+    }
+}
+
 /// Stores a triangle mesh using an array of vectors, and an array of facets
 ///
 /// Facets only store the indices into the vector array. We do this so we can store each
@@ -40,6 +57,13 @@ pub struct VertexIndex {
 }
 
 impl TriangleMesh for VertexIndex {
+    fn triangles<'a>(&'a self) -> Box<dyn Iterator<Item = Triangle> + 'a> {
+        Box::new(Facets {
+            inner: self.facets.iter(),
+            vertex_index: self,
+        })
+    }
+
     fn from_triangles(triangles: Vec<Triangle>) -> Self {
         // Safety: we have a raw vector of Triangles where each triangle is represented as 3
         // `Vector3`s. The Triangle struct is `repr(C)` so we rely on the fact that we can just

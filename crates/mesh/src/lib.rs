@@ -18,6 +18,9 @@ pub trait TriangleMesh: Sized {
     /// Returns the number of triangles that comprises this mesh.
     fn triangle_count(&self) -> usize;
 
+    /// Returns an iterator to the triangles in this mesh.
+    fn triangles<'a>(&'a self) -> Box<dyn Iterator<Item = Triangle> + 'a>;
+
     /// Returns a slice that represents a series of triangles.
     ///
     /// As this is returning a slice, this will only return `Some` if the
