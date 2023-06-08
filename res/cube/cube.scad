@@ -1,1 +1,1 @@
-cube(20, center = true);
+cube(20, center = false);

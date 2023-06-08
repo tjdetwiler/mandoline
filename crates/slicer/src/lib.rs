@@ -10,11 +10,6 @@ use ordered_float::OrderedFloat;
 #[allow(non_snake_case)]
 pub struct SlicerConfig {
     layer_height: f64,
-
-    // Right now we're slicing in model coordinates, which means we go below 0
-    // on the z axis while slicing. This should be the minimum z value from the
-    // model being sliced.
-    HACK_first_layer_offset: f64,
 }
 
 fn f32_cmp(a: &f64, b: &f64) -> std::cmp::Ordering {
@@ -69,9 +64,8 @@ fn compute_constant_layer_range(t: &Triangle, config: &SlicerConfig) -> std::ops
     // here.
     let zmin = std::cmp::min_by(std::cmp::min_by(z0, z1, f32_cmp), z2, f32_cmp);
 
-    let min_layer =
-        ((zmin - config.HACK_first_layer_offset) / config.layer_height).round() as usize;
-    let max_layer = (zmax - config.HACK_first_layer_offset) / config.layer_height;
+    let min_layer = (zmin / config.layer_height).round() as usize;
+    let max_layer = zmax / config.layer_height;
     let max_layer = (max_layer + 1.0).round() as usize;
 
     min_layer..max_layer
@@ -120,8 +114,7 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) {
     // and where.
     for t in m.triangles() {
         for layer in compute_constant_layer_range(&t, config) {
-            let cutting_plane =
-                (layer as f64 * config.layer_height + config.HACK_first_layer_offset) as f32;
+            let cutting_plane = (layer as f64 * config.layer_height) as f32;
             // Compute intersection points.
             //
             // We have 3 points that define a triangle, and a cutting plane that is
@@ -303,9 +296,9 @@ mod tests {
     fn slice_cube() {
         let config = SlicerConfig {
             layer_height: 1.0,
-            HACK_first_layer_offset: -10.0,
             ..Default::default()
         };
+
         let mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CUBE).unwrap();
         slice_mesh(mesh, &config);
     }
