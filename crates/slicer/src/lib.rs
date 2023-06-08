@@ -4,8 +4,6 @@ use cgmath::{InnerSpace, Vector2};
 use mandoline_mesh::{Triangle, TriangleMesh, Vector3};
 use ordered_float::OrderedFloat;
 
-mod graph_writer;
-
 pub type OrderedVec2 = Vector2<OrderedFloat<f32>>;
 
 #[inline(always)]
@@ -14,11 +12,8 @@ fn float_eq(f1: f32, f2: f32) -> bool {
 }
 
 #[derive(Default)]
-#[non_exhaustive]
-#[allow(non_snake_case)]
-#[allow(non_snake_case)]
 pub struct SlicerConfig {
-    layer_height: f64,
+    pub layer_height: f64,
 }
 
 fn f32_cmp(a: &f64, b: &f64) -> std::cmp::Ordering {
@@ -228,11 +223,6 @@ pub fn slice_mesh<M: TriangleMesh>(
             }
         }
     }
-
-    // Now we stitch together all the line segments.
-    for (layer, segments) in slices.iter().enumerate() {
-        graph_writer::generate_layer_graph(format!("./layer{}.dot", layer), segments);
-    }
     slices
 }
 
@@ -339,10 +329,7 @@ mod tests {
 
     #[test]
     fn slice_cube() {
-        let config = SlicerConfig {
-            layer_height: 1.0,
-            ..Default::default()
-        };
+        let config = SlicerConfig { layer_height: 1.0 };
 
         let mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CUBE).unwrap();
         slice_mesh(mesh, &config);

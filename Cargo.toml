@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "crates/cli",
     "crates/mesh",
     "crates/slicer",
     "crates/stl",
