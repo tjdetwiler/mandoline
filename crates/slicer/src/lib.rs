@@ -1,15 +1,28 @@
 use std::collections::HashMap;
 
+use cgmath::Vector2;
 use mandoline_mesh::{Triangle, TriangleMesh, Vector3};
+use ordered_float::OrderedFloat;
 
 #[derive(Default)]
 #[non_exhaustive]
+#[allow(non_snake_case)]
+#[allow(non_snake_case)]
 pub struct SlicerConfig {
     layer_height: f64,
+
+    // Right now we're slicing in model coordinates, which means we go below 0
+    // on the z axis while slicing. This should be the minimum z value from the
+    // model being sliced.
+    HACK_first_layer_offset: f64,
 }
 
 fn f32_cmp(a: &f64, b: &f64) -> std::cmp::Ordering {
     a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
+}
+
+fn is_on_plane(p0: &Vector3, p1: &Vector3, z: f32) -> bool {
+    float_eq::float_eq!(p0.z, p1.z, abs <= 0.0001) && float_eq::float_eq!(p0.z, z, abs <= 0.0001)
 }
 
 fn intersect(p0: &Vector3, p1: &Vector3, z: f32) -> Option<Vector3> {
@@ -56,8 +69,9 @@ fn compute_constant_layer_range(t: &Triangle, config: &SlicerConfig) -> std::ops
     // here.
     let zmin = std::cmp::min_by(std::cmp::min_by(z0, z1, f32_cmp), z2, f32_cmp);
 
-    let min_layer = (zmin / config.layer_height).round() as usize;
-    let max_layer = zmax / config.layer_height;
+    let min_layer =
+        ((zmin - config.HACK_first_layer_offset) / config.layer_height).round() as usize;
+    let max_layer = (zmax - config.HACK_first_layer_offset) / config.layer_height;
     let max_layer = (max_layer + 1.0).round() as usize;
 
     min_layer..max_layer
@@ -73,13 +87,41 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) {
     //
     // TODO: If triangle mesh knows it's min/max z we can pre-allocate
     // the entire vec here.
-    let mut slices: Vec<HashMap<Vector3, Vector3>> = Vec::new();
+    let mut slices: Vec<HashMap<Vector2<OrderedFloat<f32>>, Vector2<f32>>> = Vec::new();
 
+    let mut add_slice = |layer, first: &Vector3, second: &Vector3| {
+        if slices.len() <= layer {
+            slices.resize_with(layer + 1, HashMap::new);
+        }
+
+        // Floats are not hash nor eq, so we use the ordered-float crate. This is relying
+        // on numeric representations to be identical which is a bit dicey.
+        //
+        // TODO: perhaps we can round to a nearest epsilon to avoid gaps from rounding
+        // errors.
+        slices[layer].insert(
+            Vector2 {
+                x: first.x.into(),
+                y: first.y.into(),
+                // z: implicit based on `layer`.
+            },
+            Vector2 {
+                x: second.x,
+                y: second.y,
+                // z: implicit based on `layer`.
+            },
+        );
+    };
+
+    for (i, t) in m.triangles().enumerate() {
+        println!("t{} = {:?}", i, t);
+    }
     // For each triangle, compute the slices that intersects this triangle
     // and where.
     for t in m.triangles() {
         for layer in compute_constant_layer_range(&t, config) {
-            let cutting_plane = (layer as f64 * config.layer_height) as f32;
+            let cutting_plane =
+                (layer as f64 * config.layer_height + config.HACK_first_layer_offset) as f32;
             // Compute intersection points.
             //
             // We have 3 points that define a triangle, and a cutting plane that is
@@ -95,44 +137,63 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) {
             let bc = intersect(&t.p1, &t.p2, cutting_plane);
             let ca = intersect(&t.p2, &t.p0, cutting_plane);
 
-            // Compute the total number of intersection points.
-            let mut count = 0;
-            for intersection in &[ab, bc, ca] {
-                if intersection.is_some() {
-                    count += 1;
-                }
-            }
-            // Based on the number of intersection points we have a few possible
-            // situations:
-            //
-            //   * 0 points - This triangle does not intersect the cutting plane. This
-            //     should not be possible since we have computed the layers such that
-            //     they should intesect the cutting plane.
-            assert_ne!(count, 0);
-            //   * 1 point  - one verex intersects the cutting plane. This is also not
-            //     expected because this situation will be represented by 2 points with
-            //     the same coordinate; one from each line segment that touches the
-            //     plane.
-            assert_ne!(count, 1);
-            //   * 3 points - The triangle lies on the cutting plane. For now we skip this
-            //     and rely on adjacent triangles to provide these line segments.
-            if count == 3 {
-                break;
-            }
-            //   * 2 points - 2 of the line segments cut through the cutting plane,
-            //     producing a line segment.
-            assert!(count == 2);
-            let (_first, _second) = if let Some(ab) = ab {
-                (ab, if let Some(bc) = bc { bc } else { ca.unwrap() })
+            let ab_planar = is_on_plane(&t.p0, &t.p1, cutting_plane);
+            let bc_planar = is_on_plane(&t.p1, &t.p2, cutting_plane);
+            let ca_planar = is_on_plane(&t.p2, &t.p0, cutting_plane);
+            if ab_planar && bc_planar {
+                println!("triangle on plane {:?}", t);
+                add_slice(layer, &t.p0, &t.p1);
+                add_slice(layer, &t.p1, &t.p2);
+                add_slice(layer, &t.p2, &t.p0);
+            } else if ab_planar {
+                add_slice(layer, &t.p0, &t.p1);
+            } else if bc_planar {
+                add_slice(layer, &t.p1, &t.p2);
+            } else if ca_planar {
+                add_slice(layer, &t.p2, &t.p0);
             } else {
-                (bc.unwrap(), ca.unwrap())
-            };
-            if slices.len() <= layer {
-                slices.reserve(layer - slices.len());
+                // Compute the total number of intersection points.
+                let mut count = 0;
+                for intersection in &[ab, bc, ca] {
+                    if intersection.is_some() {
+                        count += 1;
+                    }
+                }
+                // Based on the number of intersection points we have a few possible
+                // situations:
+                //
+                //   * 0 points - This triangle does not intersect the cutting plane. This
+                //     should not be possible since we have computed the layers such that
+                //     they should intesect the cutting plane.
+                assert_ne!(count, 0);
+                //   * 1 point  - one verex intersects the cutting plane. This is also not
+                //     expected because this situation will be represented by 2 points with
+                //     the same coordinate; one from each line segment that touches the
+                //     plane.
+                assert_ne!(count, 1);
+                //   * 3 points - The triangle lies on the cutting plane. For now we skip this
+                //     and rely on adjacent triangles to provide these line segments.
+                if count == 3 {
+                    break;
+                }
+                //   * 2 points - 2 of the line segments cut through the cutting plane,
+                //     producing a line segment.
+                assert!(count == 2);
+                let (first, second) = if let Some(ab) = ab {
+                    (ab, if let Some(bc) = bc { bc } else { ca.unwrap() })
+                } else {
+                    (bc.unwrap(), ca.unwrap())
+                };
+                add_slice(layer, &first, &second);
             }
-            // TODO: Floats are not hash nor eq. Perhaps a fixed point number would be preferable here.
-            //
-            // slices[layer].insert(first, second);
+        }
+    }
+
+    // Now we stitch together all the line segments.
+    for (layer, segments) in slices.iter().enumerate() {
+        println!("Layer {} has {} segments", layer, segments.len());
+        for segment in segments {
+            println!("\ts: {:?}", segment);
         }
     }
 }
@@ -231,7 +292,6 @@ mod tests {
         assert!(!intersection.x.is_nan());
         assert!(!intersection.y.is_nan());
         assert_float_eq!(intersection.z, 0.5, abs <= 0.0001);
-        println!("intersection: {:?}", intersection);
     }
 
     #[test]
@@ -243,6 +303,7 @@ mod tests {
     fn slice_cube() {
         let config = SlicerConfig {
             layer_height: 1.0,
+            HACK_first_layer_offset: -10.0,
             ..Default::default()
         };
         let mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CUBE).unwrap();

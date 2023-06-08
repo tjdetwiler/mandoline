@@ -11,3 +11,4 @@ static_assertions = "1.1.0"
 mandoline-stl = { path = "../stl" }
 mandoline-mesh = { path = "../mesh" }
 float_eq = "1.0.1"
+ordered-float = "3.7.0"
