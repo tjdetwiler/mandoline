@@ -1,10 +1,4 @@
-use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
-    fs::File,
-    hash::{Hash, Hasher},
-    io::Write,
-    path::Path,
-};
+use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
 use mandoline::OrderedVec2;
 
@@ -30,10 +24,10 @@ pub fn generate_svg<P: AsRef<Path>>(p: P, slices: &Vec<HashMap<OrderedVec2, Orde
         writeln!(f, "       <text x=\"10\" y=\"10\">Layer {}</text>", layer).unwrap();
         writeln!(f, "       <g transform=\"translate(15, 20) scale(5)\">").unwrap();
         for (p0, p1) in segments {
-            writeln!(f, "        <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#000\" stroke-width=\"1\" marker-end=\"url(#arrowhead)\"/>", p0.x, p0.y, p1.x, p1.y).unwrap();
+            writeln!(f, "        <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#000\" stroke-width=\"0.5\" marker-end=\"url(#arrowhead)\"/>", p0.x, p0.y, p1.x, p1.y).unwrap();
             writeln!(
                 f,
-                "        <circle cx=\"{}\" cy=\"{}\" r=\"1\" />",
+                "        <circle cx=\"{}\" cy=\"{}\" r=\"0.5\" />",
                 p0.x, p0.y
             )
             .unwrap();
@@ -42,7 +36,7 @@ pub fn generate_svg<P: AsRef<Path>>(p: P, slices: &Vec<HashMap<OrderedVec2, Orde
         values[layer] = "visible";
         let v = values.join("; ");
         values[layer] = "hidden";
-        writeln!(f, "      <animate attributeName=\"visibility\" values=\"{}\" dur=\"1s\" repeatCount=\"indefinite\" />", v).unwrap();
+        writeln!(f, "      <animate attributeName=\"visibility\" values=\"{}\" dur=\"5s\" repeatCount=\"indefinite\" />", v).unwrap();
         writeln!(f, "    </g>").unwrap();
     }
     writeln!(f, "  </g>").unwrap();

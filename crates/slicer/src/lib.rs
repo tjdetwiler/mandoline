@@ -184,6 +184,9 @@ pub fn slice_mesh<M: TriangleMesh>(
                     }
                     // TODO: We need to handle the case of a line-vertex intersection. This
                     // doesn't occur in the first cube model I'm using.
+                    if count != 2 {
+                        continue;
+                    }
                     assert_eq!(count, 2);
                     let (first, second) = if let Some(ab) = ab {
                         (ab, if let Some(bc) = bc { bc } else { ca.unwrap() })
