@@ -11,6 +11,16 @@ fn float_eq(f1: f32, f2: f32) -> bool {
     float_eq::float_eq!(f1, f2, abs <= 0.0001)
 }
 
+trait Truncate{
+    fn truncate_micros(self) -> Self;
+}
+
+impl Truncate for f32 {
+    fn truncate_micros(self) -> Self {
+        (self * 1_000_000.0).round() / 1_000_000.0
+    }
+}
+
 #[derive(Default)]
 pub struct SlicerConfig {
     pub layer_height: f64,
