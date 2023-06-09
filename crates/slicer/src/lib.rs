@@ -6,18 +6,20 @@ use ordered_float::OrderedFloat;
 
 pub type OrderedVec2 = Vector2<OrderedFloat<f32>>;
 
+const ENABLE_SIMPLIFY_CONTOUR: bool = false;
+
 #[inline(always)]
 fn float_eq(f1: f32, f2: f32) -> bool {
     float_eq::float_eq!(f1, f2, abs <= 0.0001)
 }
 
-trait Truncate{
+trait Truncate {
     fn truncate_micros(self) -> Self;
 }
 
 impl Truncate for f32 {
     fn truncate_micros(self) -> Self {
-        (self * 1_000_000.0).round() / 1_000_000.0
+        (self * 1_000.0).round() / 1_000.0
     }
 }
 
@@ -120,13 +122,13 @@ pub fn slice_mesh<M: TriangleMesh>(
         // errors.
         slices[layer].insert(
             Vector2 {
-                x: first.x.into(),
-                y: first.y.into(),
+                x: first.x.truncate_micros().into(),
+                y: first.y.truncate_micros().into(),
                 // z: implicit based on `layer`.
             },
             Vector2 {
-                x: second.x.into(),
-                y: second.y.into(),
+                x: second.x.truncate_micros().into(),
+                y: second.y.truncate_micros().into(),
                 // z: implicit based on `layer`.
             },
         );
@@ -236,6 +238,33 @@ pub fn slice_mesh<M: TriangleMesh>(
             }
         }
     }
+
+    if ENABLE_SIMPLIFY_CONTOUR {
+        for slice in slices.iter_mut() {
+            let (&(mut start), &(mut end)) = slice.iter().next().unwrap();
+            let mut d0 = (end - start).normalize();
+            for _ in 1..slice.len() {
+                // If the direction vector between start->end and start->next are parallel, then
+                // p1 is superfluous and can be dropped. The vectors are parallel if the dot
+                // product is 1.0 (since we've normalized the vectors).
+                //
+                // This is a pretty strict check so this will probably miss some points due to
+                // rounding errors.
+                let next = *slice.get(&end).unwrap();
+                let d1 = (next - start).normalize();
+                if d0.dot(d1).0 == 1.0 {
+                    slice.remove(&end);
+                    slice.insert(start, next);
+                    end = next;
+                } else {
+                    start = end;
+                    end = next;
+                    d0 = (end - start).normalize();
+                }
+            }
+        }
+    }
+
     slices
 }
 
