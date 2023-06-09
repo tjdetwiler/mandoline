@@ -48,7 +48,6 @@ fn intersect(p0: &Vector3, p1: &Vector3, z: f32) -> Option<Vector3> {
         && ((d0.is_sign_negative() && d1.is_sign_negative())
             || (d0.is_sign_positive() && d1.is_sign_positive()))
     {
-        //println!("no intersect {}<->{} z {} e0 {} e1 {}", d0, d1, z, e0, e1);
         return None;
     }
 

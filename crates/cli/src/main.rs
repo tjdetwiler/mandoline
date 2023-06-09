@@ -1,7 +1,7 @@
 use mandoline::{slice_mesh, SlicerConfig};
 use mandoline_mesh::DefaultMesh;
 
-mod graph_writer;
+mod svg;
 
 fn main() {
     const STL_CUBE: &[u8] = include_bytes!("../../../res/calibration-cube/cube-bin.stl");
@@ -11,5 +11,5 @@ fn main() {
     let mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CUBE).unwrap();
     let slices = slice_mesh(mesh, &config);
 
-    graph_writer::generate_svg("./out.svg", &slices);
+    svg::generate_svg("./out.svg", &slices);
 }
