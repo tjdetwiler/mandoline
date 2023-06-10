@@ -16,5 +16,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: extractions/setup-just@v1
+    - name: Install wasm32 toolchain
+      run: |
+        rustup toolchain add --target wasm32-unknown-unknown      
     - name: Verify
       run: just run-presubmit
