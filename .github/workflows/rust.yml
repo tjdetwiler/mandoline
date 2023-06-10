@@ -18,6 +18,10 @@ jobs:
     - uses: extractions/setup-just@v1
     - name: Install wasm32 toolchain
       run: |
-        rustup target add wasm32-unknown-unknown      
+        rustup target add wasm32-unknown-unknown
+    - name: Install wasm-bindgen-cli
+      uses: taiki-e/install-action@v2
+      with:
+        tool: wasm-bindgen-cli@0.2.86
     - name: Verify
       run: just run-presubmit
