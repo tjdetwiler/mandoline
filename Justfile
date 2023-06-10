@@ -21,6 +21,10 @@ test-wasm:
 # Test both native and wasm.
 test-all: test test-wasm
 
+# Code coverage
+coverage:
+    cargo llvm-cov
+
 # Populate wasm files in stl-viewer/pkg
 package-wasm:
     cd stl-viewer && wasm-pack build --target web
@@ -46,7 +50,7 @@ format-code:
 run-presubmit: test-all lint
 
 # This is what is run post-submit to verify the repo is healthy.
-run-ci: run-presubmit
+run-ci: run-presubmit coverage
 
 # Rebuild scad models into STLs.
 rebuild-models:
