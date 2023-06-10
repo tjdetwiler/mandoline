@@ -18,6 +18,6 @@ jobs:
     - uses: extractions/setup-just@v1
     - name: Install wasm32 toolchain
       run: |
-        rustup toolchain add --target wasm32-unknown-unknown      
+        rustup target add wasm32-unknown-unknown      
     - name: Verify
       run: just run-presubmit
