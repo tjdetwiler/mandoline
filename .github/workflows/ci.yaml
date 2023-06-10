@@ -19,9 +19,19 @@ jobs:
     - name: Install wasm32 toolchain
       run: |
         rustup target add wasm32-unknown-unknown
-    - name: Install wasm-bindgen-cli
+    - name: Install wasm-bindgen-cli, cargo-llvm-cov
       uses: taiki-e/install-action@v2
       with:
-        tool: wasm-bindgen-cli@0.2.86
+        tool: wasm-bindgen-cli@0.2.86,cargo-llvm-cov
     - name: Verify
       run: just run-ci
+    - name: generate coverage report
+      shell: bash
+      run: |
+        set -e
+
+        cargo llvm-cov report --lcov --output-path lcov.info
+    - name: upload coverage report to codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: lcov.info
