@@ -24,4 +24,4 @@ jobs:
       with:
         tool: wasm-bindgen-cli@0.2.86
     - name: Verify
-      run: just run-presubmit
+      run: just run-ci

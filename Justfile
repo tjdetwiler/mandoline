@@ -45,6 +45,9 @@ format-code:
 # Checks to run successfully before submit.
 run-presubmit: test-all lint
 
+# This is what is run post-submit to verify the repo is healthy.
+run-ci: run-presubmit
+
 # Rebuild scad models into STLs.
 rebuild-models:
 	#!/usr/bin/env sh
