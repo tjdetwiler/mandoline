@@ -31,7 +31,9 @@ jobs:
         set -e
 
         cargo llvm-cov report --lcov --output-path lcov.info
-    - name: upload coverage report to codecov
+    - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         files: lcov.info
