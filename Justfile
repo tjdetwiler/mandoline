@@ -23,7 +23,7 @@ test-all: test test-wasm
 
 # Code coverage
 coverage:
-    cargo llvm-cov
+    cargo llvm-cov --no-cfg-coverage
 
 # Populate wasm files in stl-viewer/pkg
 package-wasm:
