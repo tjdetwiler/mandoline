@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use cgmath::{InnerSpace, Vector2};
 use mandoline_mesh::{Triangle, TriangleMesh, Vector3};
