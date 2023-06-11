@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use cgmath::{InnerSpace, Vector2};
 use mandoline_mesh::{Triangle, TriangleMesh, Vector3};
@@ -6,7 +6,7 @@ use ordered_float::OrderedFloat;
 
 pub type OrderedVec2 = Vector2<OrderedFloat<f32>>;
 
-const ENABLE_SIMPLIFY_CONTOUR: bool = false;
+const ENABLE_SIMPLIFY_CONTOUR: bool = true;
 
 #[inline(always)]
 fn float_eq(f1: f32, f2: f32) -> bool {
@@ -241,24 +241,27 @@ pub fn slice_mesh<M: TriangleMesh>(
     if ENABLE_SIMPLIFY_CONTOUR {
         for slice in slices.iter_mut() {
             let (&(mut start), &(mut end)) = slice.iter().next().unwrap();
-            let mut d0 = (end - start).normalize();
-            for _ in 1..slice.len() {
+            let mut v0 = end - start;
+            for _ in 0..slice.len() {
                 // If the direction vector between start->end and start->next are parallel, then
-                // p1 is superfluous and can be dropped. The vectors are parallel if the dot
-                // product is 1.0 (since we've normalized the vectors).
+                // p1 is superfluous and can be dropped. The vectors are parallel if the magnitude
+                // of the cross product is 0.
                 //
-                // This is a pretty strict check so this will probably miss some points due to
-                // rounding errors.
+                // If we just want to know the cross product of these 2d vectors, we can fix
+                // them with z == 0, so this is the only remaining part of the cross product
+                // that we care about since the x,y terms are all zero'd out.
                 let next = *slice.get(&end).unwrap();
-                let d1 = (next - start).normalize();
-                if d0.dot(d1).0 == 1.0 {
+                let v1 = next - start;
+                let cross = (v0.x * v1.y) - (v0.y * v1.x);
+                if cross == 0.0 {
                     slice.remove(&end);
                     slice.insert(start, next);
                     end = next;
+                    continue;
                 } else {
                     start = end;
                     end = next;
-                    d0 = (end - start).normalize();
+                    v0 = end - start;
                 }
             }
         }
