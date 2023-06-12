@@ -339,11 +339,11 @@ mod tests {
         assert_float_eq!(intersection.z, 0.5, abs <= 0.0001);
     }
 
-    // TODO: intersect is currently broken for this situation.
+    // intersect with a line parallel to the plane.
     //
-    // We will need to tweak the interface to support this situation.
+    // The slicer should detect this situation and not call intersect
+    // on these points.
     #[test]
-    #[ignore]
     fn intersect_plane_with_parallel_line() {
         // Line on the cutting plane:
         let intersection = intersect(
@@ -360,9 +360,9 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert!(!intersection.x.is_nan());
-        assert!(!intersection.y.is_nan());
-        assert_float_eq!(intersection.z, 0.5, abs <= 0.0001);
+        assert!(intersection.x.is_nan());
+        assert!(intersection.y.is_nan());
+        assert_eq!(intersection.z, 0.0);
     }
 
     #[test]
