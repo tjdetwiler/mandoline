@@ -1,8 +1,18 @@
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
-use mandoline::OrderedVec2;
+use mandoline::{slice_mesh, OrderedVec2, SlicerConfig};
+use mandoline_mesh::DefaultMesh;
 
-pub fn generate_svg<P: AsRef<Path>>(p: P, slices: &Vec<HashMap<OrderedVec2, OrderedVec2>>) {
+use crate::args;
+
+pub fn svg_command(args: args::SvgArgs) {
+    let config = SlicerConfig { layer_height: 0.2 };
+    let mesh = mandoline_stl::read_stl::<DefaultMesh, _>(args.stl_path).unwrap();
+    let slices = slice_mesh(mesh, &config);
+    generate_svg(args.output, &slices);
+}
+
+fn generate_svg<P: AsRef<Path>>(p: P, slices: &Vec<HashMap<OrderedVec2, OrderedVec2>>) {
     let mut f = File::create(p).unwrap();
     writeln!(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" >").unwrap();
     writeln!(f, "  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>").unwrap();
