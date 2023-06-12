@@ -273,10 +273,9 @@ pub fn slice_mesh<M: TriangleMesh>(
 #[cfg(test)]
 mod tests {
     use float_eq::assert_float_eq;
+    use mandoline_test_data::STL_CUBE;
 
     use {super::*, mandoline_mesh::DefaultMesh};
-
-    const STL_CUBE: &[u8] = include_bytes!("../../../res/cube/cube-bin.stl");
 
     #[test]
     fn intersect_no_intersection() {

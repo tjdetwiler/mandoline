@@ -12,3 +12,6 @@ mandoline-stl = { path = "../stl" }
 mandoline-mesh = { path = "../mesh" }
 float_eq = "1.0.1"
 ordered-float = "3.7.0"
+
+[dev-dependencies]
+mandoline-test-data = { path = "../test-data" }

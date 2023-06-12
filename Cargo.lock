@@ -1042,6 +1042,7 @@ dependencies = [
  "float_eq",
  "mandoline-mesh",
  "mandoline-stl",
+ "mandoline-test-data",
  "ordered-float",
  "static_assertions",
 ]
@@ -1102,6 +1103,10 @@ dependencies = [
  "wgpu",
  "winit",
 ]
+
+[[package]]
+name = "mandoline-test-data"
+version = "0.1.0"
 
 [[package]]
 name = "memchr"

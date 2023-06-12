@@ -6,4 +6,5 @@ members = [
     "crates/slicer",
     "crates/stl",
     "crates/stl-viewer",
+    "crates/test-data",
 ]
