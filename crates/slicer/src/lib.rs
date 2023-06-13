@@ -25,10 +25,10 @@ impl Truncate for f32 {
 
 #[derive(Default)]
 pub struct SlicerConfig {
-    pub layer_height: f64,
+    pub layer_height: f32,
 }
 
-fn f32_cmp(a: &f64, b: &f64) -> std::cmp::Ordering {
+fn f32_cmp(a: &f32, b: &f32) -> std::cmp::Ordering {
     a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
 }
 
@@ -59,14 +59,14 @@ fn intersect(p0: &Vector3, p1: &Vector3, z: f32) -> Option<Vector3> {
     })
 }
 
-fn compute_min_max(t: &Triangle) -> (f64, f64) {
+fn compute_min_max(t: &Triangle) -> (f32, f32) {
     // The first step is to compute the slices (layers) that this triangle
     // intersects with. We can do this simply by finding the min and max of
     // the z coordinate since we will define the cutting plane along the z
     // axis.
-    let z0 = t.p0.z as f64;
-    let z1 = t.p1.z as f64;
-    let z2 = t.p2.z as f64;
+    let z0 = t.p0.z;
+    let z1 = t.p1.z;
+    let z2 = t.p2.z;
 
     let zmax = std::cmp::max_by(std::cmp::max_by(z0, z1, f32_cmp), z2, f32_cmp);
     // Align zmin to the layer height so that all our z coordinates for a slice lie
@@ -83,8 +83,8 @@ fn compute_min_max(t: &Triangle) -> (f64, f64) {
 //
 // This assumes a constant layer height as defined by the `config`.
 fn compute_constant_layer_range(
-    zmin: f64,
-    zmax: f64,
+    zmin: f32,
+    zmax: f32,
     config: &SlicerConfig,
 ) -> std::ops::Range<usize> {
     let min_layer = (zmin / config.layer_height).round() as usize;
@@ -138,14 +138,12 @@ pub fn slice_mesh<M: TriangleMesh>(
     for t in m.triangles() {
         let (zmin, zmax) = compute_min_max(&t);
         for layer in compute_constant_layer_range(zmin, zmax, config) {
-            let cutting_plane = (layer as f64 * config.layer_height) as f32;
+            let cutting_plane = layer as f32 * config.layer_height;
 
             let a_planar = is_on_plane(&t.p0, cutting_plane);
             let b_planar = is_on_plane(&t.p1, cutting_plane);
             let c_planar = is_on_plane(&t.p2, cutting_plane);
 
-            let zmin = zmin as f32;
-            let zmax = zmax as f32;
             match (a_planar, b_planar, c_planar) {
                 // All points lie on the cutting plane. This means the entire triangle
                 // is on the cutting plane. We don't generate line segments for this case
