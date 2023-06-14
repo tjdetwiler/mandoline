@@ -81,19 +81,25 @@ fn compute_min_max(t: &Triangle) -> (f32, f32) {
 
 // Computes the layer numbers that the triangle instersects.
 //
-// This assumes a constant layer height as defined by the `config`.
+// The returned range is the set of cutting planes (defined by multiples of
+// layer height) that will intersect the range zmin-zmax. Returns None if
+// this triangle does not intersect any cutting planes.
 fn compute_constant_layer_range(
     zmin: f32,
     zmax: f32,
     config: &SlicerConfig,
-) -> std::ops::Range<usize> {
-    let min_layer = (zmin / config.layer_height).round() as usize;
-    let max_layer = zmax / config.layer_height;
-    let max_layer = (max_layer + 1.0).round() as usize;
-
-    min_layer..max_layer
+) -> Option<std::ops::RangeInclusive<usize>> {
+    let min_layer = (zmin / config.layer_height).ceil() as usize;
+    let max_layer = (zmax / config.layer_height).floor() as usize;
+    if max_layer > min_layer {
+        Some(min_layer..=max_layer)
+    } else {
+        None
+    }
 }
 
+/// Given a triangle mesh, we slice it into a series of contour layers using
+/// the parameters in `SlicerConfig`.
 pub fn slice_mesh<M: TriangleMesh>(
     m: M,
     config: &SlicerConfig,
@@ -116,9 +122,6 @@ pub fn slice_mesh<M: TriangleMesh>(
 
         // Floats are not hash nor eq, so we use the ordered-float crate. This is relying
         // on numeric representations to be identical which is a bit dicey.
-        //
-        // TODO: perhaps we can round to a nearest epsilon to avoid gaps from rounding
-        // errors.
         slices[layer].insert(
             Vector2 {
                 x: first.x.truncate_micros().into(),
@@ -137,7 +140,10 @@ pub fn slice_mesh<M: TriangleMesh>(
     // and where.
     for t in m.triangles() {
         let (zmin, zmax) = compute_min_max(&t);
-        for layer in compute_constant_layer_range(zmin, zmax, config) {
+        let Some(layer_range) = compute_constant_layer_range(zmin, zmax, config) else {
+            continue;
+        };
+        for layer in layer_range {
             let cutting_plane = layer as f32 * config.layer_height;
 
             let a_planar = is_on_plane(&t.p0, cutting_plane);
@@ -271,7 +277,7 @@ pub fn slice_mesh<M: TriangleMesh>(
 #[cfg(test)]
 mod tests {
     use float_eq::assert_float_eq;
-    use mandoline_test_data::STL_CUBE;
+    use mandoline_test_data::{STL_CALIBRATION_CUBE, STL_CUBE};
 
     use {super::*, mandoline_mesh::DefaultMesh};
 
@@ -364,15 +370,16 @@ mod tests {
     }
 
     #[test]
-    fn create_stl_mesh() {
-        let _mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CUBE).unwrap();
+    fn slice_simple_cube() {
+        let config = SlicerConfig { layer_height: 0.2 };
+        let mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CUBE.bytes).unwrap();
+        slice_mesh(mesh, &config);
     }
 
     #[test]
-    fn slice_cube() {
-        let config = SlicerConfig { layer_height: 1.0 };
-
-        let mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CUBE).unwrap();
+    fn slice_calibration_cube() {
+        let config = SlicerConfig { layer_height: 0.2 };
+        let mesh = mandoline_stl::parse_stl::<DefaultMesh>(STL_CALIBRATION_CUBE.bytes).unwrap();
         slice_mesh(mesh, &config);
     }
 }
