@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fs::File, io::Write};
+use std::{fs::File, io::Write};
 
-use mandoline::{slice_mesh, OrderedVec2, SlicerConfig};
+use mandoline::{slice_mesh, Contour, SlicerConfig};
 use mandoline_mesh::DefaultMesh;
 
 use crate::args;
@@ -41,24 +41,21 @@ impl SvgCommand {
         write_svg_footer(&mut f);
     }
 
-    fn generate_layer_paths<W: Write>(
-        &mut self,
-        f: &mut W,
-        layer: usize,
-        segments: &HashMap<OrderedVec2, OrderedVec2>,
-    ) {
+    fn generate_layer_paths<W: Write>(&mut self, f: &mut W, layer: usize, segments: &Contour) {
         writeln!(f, "    <!-- Layer {} -->", layer).unwrap();
         writeln!(f, "    <g id=\"frame{}\">", layer).unwrap();
         writeln!(f, "       <text x=\"10\" y=\"10\">Layer {}</text>", layer).unwrap();
         writeln!(f, "       <g transform=\"translate(15, 20) scale(5)\">").unwrap();
-        for (p0, p1) in segments {
-            writeln!(f, "        <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#000\" stroke-width=\"0.5\" marker-end=\"url(#arrowhead)\"/>", p0.x, p0.y, p1.x, p1.y).unwrap();
-            writeln!(
-                f,
-                "        <circle cx=\"{}\" cy=\"{}\" r=\"0.5\" />",
-                p0.x, p0.y
-            )
-            .unwrap();
+        for path in segments.paths() {
+            for (p0, p1) in path.segments() {
+                writeln!(f, "        <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#000\" stroke-width=\"0.5\" marker-end=\"url(#arrowhead)\"/>", p0.0, p0.1, p1.0, p1.1).unwrap();
+                writeln!(
+                    f,
+                    "        <circle cx=\"{}\" cy=\"{}\" r=\"0.5\" />",
+                    p0.0, p0.1
+                )
+                .unwrap();
+            }
         }
         writeln!(f, "     </g>").unwrap();
         if let Some(values) = self.animation_state.as_mut() {

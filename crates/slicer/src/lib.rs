@@ -4,9 +4,12 @@ use cgmath::{InnerSpace, Vector2};
 use mandoline_mesh::{Triangle, TriangleMesh, Vector3};
 use ordered_float::OrderedFloat;
 
-pub type OrderedVec2 = Vector2<OrderedFloat<f32>>;
+mod contour;
 
-const ENABLE_SIMPLIFY_CONTOUR: bool = true;
+pub use contour::*;
+
+pub type OrderedVec2 = Vector2<OrderedFloat<f32>>;
+pub type SegmentMap = HashMap<OrderedVec2, OrderedVec2>;
 
 #[inline(always)]
 fn float_eq(f1: f32, f2: f32) -> bool {
@@ -100,10 +103,7 @@ fn compute_constant_layer_range(
 
 /// Given a triangle mesh, we slice it into a series of contour layers using
 /// the parameters in `SlicerConfig`.
-pub fn slice_mesh<M: TriangleMesh>(
-    m: M,
-    config: &SlicerConfig,
-) -> Vec<HashMap<OrderedVec2, OrderedVec2>> {
+pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> Vec<Contour> {
     // The vector has an entry for each slice, in-order.
     //
     // Each layer is a hash-map that the start of a line segment to the
@@ -241,37 +241,7 @@ pub fn slice_mesh<M: TriangleMesh>(
             }
         }
     }
-
-    if ENABLE_SIMPLIFY_CONTOUR {
-        for slice in slices.iter_mut() {
-            let (&(mut start), &(mut end)) = slice.iter().next().unwrap();
-            let mut v0 = end - start;
-            for _ in 0..slice.len() {
-                // If the direction vector between start->end and start->next are parallel, then
-                // p1 is superfluous and can be dropped. The vectors are parallel if the magnitude
-                // of the cross product is 0.
-                //
-                // If we just want to know the cross product of these 2d vectors, we can fix
-                // them with z == 0, so this is the only remaining part of the cross product
-                // that we care about since the x,y terms are all zero'd out.
-                let next = *slice.get(&end).unwrap();
-                let v1 = next - start;
-                let cross = (v0.x * v1.y) - (v0.y * v1.x);
-                if cross == 0.0 {
-                    slice.remove(&end);
-                    slice.insert(start, next);
-                    end = next;
-                    continue;
-                } else {
-                    start = end;
-                    end = next;
-                    v0 = end - start;
-                }
-            }
-        }
-    }
-
-    slices
+    slices.into_iter().map(Contour::from_segment_map).collect()
 }
 
 #[cfg(test)]
