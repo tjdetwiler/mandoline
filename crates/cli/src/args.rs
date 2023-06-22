@@ -7,11 +7,15 @@ pub struct SvgArgs {
     #[arg(short, long)]
     pub layer: Option<usize>,
 
-    pub stl_path: String,
-
+    #[arg(short, long)]
     pub grid: bool,
-}
 
+    /// The width of the svg frame.
+    #[arg(short, long)]
+    pub frame_width: Option<usize>,
+
+    pub stl_path: String,
+}
 #[derive(clap::Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {

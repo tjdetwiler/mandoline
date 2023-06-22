@@ -43,6 +43,10 @@ impl SlicedMesh {
     pub fn contours(&self) -> &[Contour] {
         self.contours.as_slice()
     }
+
+    pub fn limits_x(&self) -> (f32, f32) {
+        self.limits_x
+    }
 }
 
 impl Default for SlicedMesh {
@@ -133,6 +137,8 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> SlicedMesh {
     //
     // TODO: If triangle mesh knows it's min/max z we can pre-allocate
     // the entire vec here.
+    // TODO: HashMap here is not great since we may have rouding errors.
+    // We do some course (to nearest um) rouding to mitigate this.
     let mut slices: Vec<HashMap<OrderedVec2, OrderedVec2>> = Vec::new();
 
     let mut add_slice = |layer, first: &Vector3, second: &Vector3| {

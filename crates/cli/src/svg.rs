@@ -5,15 +5,44 @@ use mandoline_mesh::DefaultMesh;
 
 use crate::args;
 
+const DEFAULT_SVG_MARGIN: usize = 15;
+const DEFAULT_SVG_CONTENT_WIDTH: usize = 100;
+const DEFAULT_SVG_WIDTH: usize = DEFAULT_SVG_CONTENT_WIDTH + 2 * DEFAULT_SVG_MARGIN;
+
+#[derive(Debug)]
 enum SvgMode {
     Animated { state: Option<Vec<&'static str>> },
     SingleLayer(usize),
     Grid,
 }
 
+#[derive(Debug)]
+struct Transform {
+    source_offset: f32,
+    dest_offset: f32,
+    scale: f32,
+}
+
+impl Transform {
+    pub fn identity() -> Self {
+        Transform {
+            source_offset: 0.0,
+            dest_offset: 0.0,
+            scale: 1.0,
+        }
+    }
+
+    pub fn apply(&self, v: f32) -> f32 {
+        v * self.scale + self.dest_offset
+    }
+}
+
+#[derive(Debug)]
 pub struct SvgCommand {
     args: args::SvgArgs,
     mode: SvgMode,
+    // Linear transform from contour coordinates to svg pixels.
+    transform: Transform,
 }
 
 impl SvgCommand {
@@ -27,13 +56,25 @@ impl SvgCommand {
                 state: Some(Vec::new()),
             },
         };
-        Self { args, mode }
+        Self {
+            args,
+            mode,
+            transform: Transform::identity(),
+        }
     }
 
     pub fn run(mut self) {
         let config = SlicerConfig { layer_height: 0.2 };
         let mesh = mandoline_stl::read_stl::<DefaultMesh, _>(&self.args.stl_path).unwrap();
         let slices = slice_mesh(mesh, &config);
+
+        // Update our transform.
+        let svg_width = (self.args.frame_width.unwrap_or(DEFAULT_SVG_CONTENT_WIDTH)) as f32;
+        let model_width = slices.limits_x().1 - slices.limits_x().0;
+
+        self.transform.dest_offset = 0.0;
+        self.transform.source_offset = -slices.limits_x().0;
+        self.transform.scale = svg_width / model_width;
 
         let layers = self
             .args
@@ -53,21 +94,50 @@ impl SvgCommand {
     }
 
     fn generate_layer_paths<W: Write>(&mut self, f: &mut W, layer: usize, segments: &Contour) {
+        let height = self.transform.apply(segments.limits_y().1).ceil() as usize;
+        let height = height + 2 * DEFAULT_SVG_MARGIN;
+        let frame_pos = if let SvgMode::Grid = self.mode {
+            let row = layer / 10;
+            let col = layer % 10;
+            (col * DEFAULT_SVG_WIDTH, row * height)
+        } else {
+            (0, 0)
+        };
         writeln!(f, "    <!-- Layer {} -->", layer).unwrap();
         writeln!(f, "    <g id=\"frame{}\">", layer).unwrap();
+        writeln!(
+            f,
+            "       <g transform=\"translate({}, {})\">",
+            frame_pos.0, frame_pos.1
+        )
+        .unwrap();
         writeln!(f, "       <text x=\"10\" y=\"10\">Layer {}</text>", layer).unwrap();
-        writeln!(f, "       <g transform=\"translate(15, 20) scale(5)\">").unwrap();
+        writeln!(
+            f,
+            "       <g transform=\"translate({}, {})\">",
+            DEFAULT_SVG_MARGIN, DEFAULT_SVG_MARGIN
+        )
+        .unwrap();
         for path in segments.paths() {
             for (p0, p1) in path.segments() {
-                writeln!(f, "        <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#000\" stroke-width=\"0.5\" marker-end=\"url(#arrowhead)\"/>", p0.0, p0.1, p1.0, p1.1).unwrap();
+                writeln!(
+                    f,
+                    "        <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#000\" stroke-width=\"0.5\" marker-end=\"url(#arrowhead)\"/>",
+                    self.transform.apply(p0.0),
+                    self.transform.apply(p0.1),
+                    self.transform.apply(p1.0),
+                    self.transform.apply(p1.1)
+                ).unwrap();
                 writeln!(
                     f,
                     "        <circle cx=\"{}\" cy=\"{}\" r=\"0.5\" />",
-                    p0.0, p0.1
+                    self.transform.apply(p0.0),
+                    self.transform.apply(p0.1)
                 )
                 .unwrap();
             }
         }
+        writeln!(f, "     </g>").unwrap();
         writeln!(f, "     </g>").unwrap();
         if let SvgMode::Animated {
             state: Some(values),
@@ -89,13 +159,25 @@ impl args::Subcommand<args::SvgArgs> for SvgCommand {
 }
 
 fn write_svg_header<W: Write>(f: &mut W) {
+    const ARROW_WIDTH: f32 = 5.0;
+    const ARROW_HEIGHT: f32 = 10.0;
     writeln!(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" >").unwrap();
     writeln!(f, "  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>").unwrap();
     writeln!(f, "  <defs>").unwrap();
-    writeln!(f, "    <marker id=\"arrowhead\" markerWidth=\"6\" markerHeight=\"6\" refX=\"3\" refY=\"1.5\" orient=\"auto\">").unwrap();
     writeln!(
         f,
-        "      <polygon points=\"0 0, 2 1.5, 0 3\" fill=\"black\" />"
+        "    <marker id=\"arrowhead\" markerWidth=\"{}\" markerHeight=\"{}\" refX=\"{}\" refY=\"{}\" orient=\"auto\">",
+        ARROW_HEIGHT,
+        ARROW_WIDTH,
+        ARROW_HEIGHT,
+        ARROW_WIDTH / 2.0,
+    ).unwrap();
+    writeln!(
+        f,
+        "      <polygon points=\"0 0, {} {}, 0 {}\" fill=\"black\" />",
+        ARROW_HEIGHT,
+        ARROW_WIDTH / 2.0,
+        ARROW_WIDTH,
     )
     .unwrap();
     writeln!(f, "    </marker>").unwrap();
@@ -132,6 +214,7 @@ mod tests {
             output: output.path().to_str().map(|s| s.to_owned()).unwrap(),
             stl_path: input.path().to_str().map(|s| s.to_owned()).unwrap(),
             grid: false,
+            frame_width: None,
         };
 
         // When - Execute the command

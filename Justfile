@@ -53,8 +53,10 @@ run-presubmit: test-all lint
 run-ci: run-presubmit coverage
 
 slice-to-svgs:
-	cargo run -p mandoline-cli -- svg --output=./out/cube20.svg ./res/cube/cube-bin.stl
-	cargo run -p mandoline-cli -- svg --output=./out/calibration-cube.svg ./res/calibration-cube/cube-bin.stl
+	cargo run -p mandoline-cli -- svg --output=./out/cube20-animated.svg ./res/cube/cube-bin.stl
+	cargo run -p mandoline-cli -- svg --output=./out/calibration-cube-animated.svg ./res/calibration-cube/cube-bin.stl
+	cargo run -p mandoline-cli -- svg --grid --output=./out/cube20-grid.svg ./res/cube/cube-bin.stl
+	cargo run -p mandoline-cli -- svg --grid --output=./out/calibration-cube-grid.svg ./res/calibration-cube/cube-bin.stl
 
 # Rebuild scad models into STLs.
 rebuild-models:

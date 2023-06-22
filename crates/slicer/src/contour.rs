@@ -154,6 +154,8 @@ impl Contour {
         let mut segment_direction = segment_end - segment_start;
         let mut path_start = segment_start;
         current_path.add_point(segment_start.x.0, segment_start.y.0);
+        let mut x_limits = (0., 0.);
+        let mut y_limits = (0., 0.);
         loop {
             let next = map.remove(&segment_end).unwrap();
 
@@ -178,6 +180,19 @@ impl Contour {
             // p1 -> p2.
             if !is_parallel(vp0_p1, vp0_p2) {
                 current_path.add_point(p1.x.0, p1.y.0);
+                // Track the contour limits while assembling.
+                if p1.x.0 < x_limits.0 {
+                    x_limits.0 = p1.x.0
+                }
+                if p1.x.0 > x_limits.1 {
+                    x_limits.1 = p1.x.0
+                }
+                if p1.y.0 < y_limits.0 {
+                    y_limits.0 = p1.y.0
+                }
+                if p1.y.0 > y_limits.1 {
+                    y_limits.1 = p1.y.0
+                }
                 segment_start = p1;
                 segment_direction = p2 - p1;
             }
@@ -221,6 +236,8 @@ impl Contour {
                 }
             }
         }
+        paths.limits_x = x_limits;
+        paths.limits_y = y_limits;
         paths
     }
 }
