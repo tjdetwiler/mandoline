@@ -141,10 +141,39 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> SlicedMesh {
     // We do some course (to nearest um) rouding to mitigate this.
     let mut slices: Vec<HashMap<OrderedVec2, OrderedVec2>> = Vec::new();
 
-    let mut add_slice = |layer, first: &Vector3, second: &Vector3| {
+    let mut add_slice = |layer, t: Triangle, first: &Vector3, second: &Vector3| {
         if slices.len() <= layer {
             slices.resize_with(layer + 1, HashMap::new);
         }
+
+        // Direction: We have a triangle with vertices in ccw order, and 2 points
+        // where the slicing plane cuts the trigangle. We need to determine if the
+        // produced vector is first->second or second->first.
+        //
+        // One way to do this is to combine the plane normal with the triangle
+        // normal with a cross product to the the direction vector.
+        let plane_normal = Vector3 {
+            x: 0.0,
+            y: 0.0,
+            z: 1.0,
+        };
+        // u,v are two edge vectors of the triangle. Take their cross product to
+        // find the outward normal vector for this triangle.
+        let u = t.p1 - t.p0;
+        let v = t.p2 - t.p0;
+        let triangle_normal = u.cross(v).normalize();
+
+        // The direction of the generate line segment is represented by the cross
+        // product of the slicing plane normal and the triangle normal.
+        let direction = plane_normal.cross(triangle_normal).normalize();
+
+        // Generate the line segment that is in the same direction we expect.
+        let forward = first - second;
+        let (first, second) = if forward.dot(direction) > 0.0 {
+            (first, second)
+        } else {
+            (second, first)
+        };
 
         // Floats are not hash nor eq, so we use the ordered-float crate. This is relying
         // on numeric representations to be identical which is a bit dicey.
@@ -193,9 +222,9 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> SlicedMesh {
 
                 // If two points lie on the cutting plane, then one triangle edge
                 // represents a line segment to be contributed to the slice.
-                (true, true, false) => add_slice(layer, &t.p0, &t.p1),
-                (false, true, true) => add_slice(layer, &t.p1, &t.p2),
-                (true, false, true) => add_slice(layer, &t.p2, &t.p0),
+                (true, true, false) => add_slice(layer, t, &t.p0, &t.p1),
+                (false, true, true) => add_slice(layer, t, &t.p1, &t.p2),
+                (true, false, true) => add_slice(layer, t, &t.p2, &t.p0),
 
                 // We need to calculate the intersection between the cutting plane and
                 // at least one edge. The second intersection will either be another
@@ -235,34 +264,8 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> SlicedMesh {
                         (bc.unwrap(), ca.unwrap())
                     };
 
-                    // Direction: We have a triangle with vertices in ccw order, and 2 points
-                    // where the slicing plane cuts the trigangle. We need to determine if the
-                    // produced vector is first->second or second->first.
-                    //
-                    // One way to do this is to combine the plane normal with the triangle
-                    // normal with a cross product to the the direction vector.
-                    let plane_normal = Vector3 {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 1.0,
-                    };
-                    // u,v are two edge vectors of the triangle. Take their cross product to
-                    // find the outward normal vector for this triangle.
-                    let u = t.p1 - t.p0;
-                    let v = t.p2 - t.p0;
-                    let triangle_normal = u.cross(v).normalize();
-
-                    // The direction of the generate line segment is represented by the cross
-                    // product of the slicing plane normal and the triangle normal.
-                    let direction = plane_normal.cross(triangle_normal).normalize();
-
                     // Generate the line segment that is in the same direction we expect.
-                    let forward = first - second;
-                    if forward.dot(direction) > 0.0 {
-                        add_slice(layer, &first, &second);
-                    } else {
-                        add_slice(layer, &second, &first);
-                    }
+                    add_slice(layer, t, &first, &second);
                 }
             }
         }
