@@ -5,22 +5,29 @@ use mandoline_mesh::DefaultMesh;
 
 use crate::args;
 
+enum SvgMode {
+    Animated { state: Option<Vec<&'static str>> },
+    SingleLayer(usize),
+    Grid,
+}
+
 pub struct SvgCommand {
     args: args::SvgArgs,
-    animation_state: Option<Vec<&'static str>>,
+    mode: SvgMode,
 }
 
 impl SvgCommand {
     pub fn from_args(args: args::SvgArgs) -> Self {
-        let animation_state = if args.layer.is_none() {
-            Some(Vec::new())
-        } else {
-            None
+        let mode = match args {
+            args::SvgArgs {
+                layer: Some(layer), ..
+            } => SvgMode::SingleLayer(layer),
+            _ if args.grid => SvgMode::Grid,
+            _ => SvgMode::Animated {
+                state: Some(Vec::new()),
+            },
         };
-        Self {
-            args,
-            animation_state,
-        }
+        Self { args, mode }
     }
 
     pub fn run(mut self) {
@@ -28,15 +35,19 @@ impl SvgCommand {
         let mesh = mandoline_stl::read_stl::<DefaultMesh, _>(&self.args.stl_path).unwrap();
         let slices = slice_mesh(mesh, &config);
 
-        let layers = self.args.layer.map(|l| l..l + 1).unwrap_or(0..slices.len());
-        if let Some(vec) = self.animation_state.as_mut() {
+        let layers = self
+            .args
+            .layer
+            .map(|l| l..l + 1)
+            .unwrap_or(0..slices.contours().len());
+        if let SvgMode::Animated { state: Some(vec) } = &mut self.mode {
             vec.resize(layers.len(), "hidden");
         }
 
         let mut f = File::create(&self.args.output).unwrap();
         write_svg_header(&mut f);
         for layer in layers {
-            self.generate_layer_paths(&mut f, layer, &slices[layer]);
+            self.generate_layer_paths(&mut f, layer, &slices.contours()[layer]);
         }
         write_svg_footer(&mut f);
     }
@@ -58,7 +69,10 @@ impl SvgCommand {
             }
         }
         writeln!(f, "     </g>").unwrap();
-        if let Some(values) = self.animation_state.as_mut() {
+        if let SvgMode::Animated {
+            state: Some(values),
+        } = &mut self.mode
+        {
             values[layer] = "visible";
             let v = values.join("; ");
             values[layer] = "hidden";
@@ -117,6 +131,7 @@ mod tests {
             layer: None,
             output: output.path().to_str().map(|s| s.to_owned()).unwrap(),
             stl_path: input.path().to_str().map(|s| s.to_owned()).unwrap(),
+            grid: false,
         };
 
         // When - Execute the command

@@ -31,6 +31,32 @@ pub struct SlicerConfig {
     pub layer_height: f32,
 }
 
+pub struct SlicedMesh {
+    contours: Vec<Contour>,
+    limits_x: (f32, f32),
+    limits_y: (f32, f32),
+}
+
+impl SlicedMesh {
+    pub fn new() -> Self {
+        Self {
+            contours: Vec::new(),
+            limits_x: (0., 0.),
+            limits_y: (0., 0.),
+        }
+    }
+
+    pub fn contours(&self) -> &[Contour] {
+        self.contours.as_slice()
+    }
+}
+
+impl Default for SlicedMesh {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn f32_cmp(a: &f32, b: &f32) -> std::cmp::Ordering {
     a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
 }
@@ -103,7 +129,7 @@ fn compute_constant_layer_range(
 
 /// Given a triangle mesh, we slice it into a series of contour layers using
 /// the parameters in `SlicerConfig`.
-pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> Vec<Contour> {
+pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> SlicedMesh {
     // The vector has an entry for each slice, in-order.
     //
     // Each layer is a hash-map that the start of a line segment to the
@@ -241,7 +267,25 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> Vec<Contour> 
             }
         }
     }
-    slices.into_iter().map(Contour::from_segment_map).collect()
+    slices.into_iter().fold(SlicedMesh::new(), |mut a, x| {
+        let c = Contour::from_segment_map(x);
+        let xlim = c.limits_x();
+        let ylim = c.limits_y();
+        if xlim.0 < a.limits_x.0 {
+            a.limits_x.0 = xlim.0;
+        }
+        if xlim.1 > a.limits_x.1 {
+            a.limits_x.1 = xlim.1;
+        }
+        if ylim.0 < a.limits_y.0 {
+            a.limits_y.0 = ylim.0;
+        }
+        if ylim.1 > a.limits_y.1 {
+            a.limits_y.1 = ylim.1;
+        }
+        a.contours.push(c);
+        a
+    })
 }
 
 #[cfg(test)]

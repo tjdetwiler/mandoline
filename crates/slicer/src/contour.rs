@@ -88,11 +88,18 @@ impl Default for ClosedPath {
 
 pub struct Contour {
     paths: Vec<ClosedPath>,
+    // The low/high point in this contour.
+    limits_x: (f32, f32),
+    limits_y: (f32, f32),
 }
 
 impl Contour {
     pub fn new() -> Contour {
-        Contour { paths: Vec::new() }
+        Contour {
+            paths: Vec::new(),
+            limits_x: (0., 0.),
+            limits_y: (0., 0.),
+        }
     }
 
     pub fn add_path(&mut self, path: ClosedPath) {
@@ -101,6 +108,14 @@ impl Contour {
 
     pub fn paths(&self) -> &[ClosedPath] {
         self.paths.as_slice()
+    }
+
+    pub fn limits_x(&self) -> (f32, f32) {
+        self.limits_x
+    }
+
+    pub fn limits_y(&self) -> (f32, f32) {
+        self.limits_y
     }
 }
 

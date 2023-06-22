@@ -8,6 +8,8 @@ pub struct SvgArgs {
     pub layer: Option<usize>,
 
     pub stl_path: String,
+
+    pub grid: bool,
 }
 
 #[derive(clap::Parser, Debug)]
