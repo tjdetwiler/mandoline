@@ -152,7 +152,7 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> SlicedMesh {
         //
         // One way to do this is to combine the plane normal with the triangle
         // normal with a cross product to the the direction vector.
-        let plane_normal = Vector3 {
+        const Z_NORMAL: Vector3 = Vector3 {
             x: 0.0,
             y: 0.0,
             z: 1.0,
@@ -165,7 +165,7 @@ pub fn slice_mesh<M: TriangleMesh>(m: M, config: &SlicerConfig) -> SlicedMesh {
 
         // The direction of the generate line segment is represented by the cross
         // product of the slicing plane normal and the triangle normal.
-        let direction = plane_normal.cross(triangle_normal).normalize();
+        let direction = Z_NORMAL.cross(triangle_normal).normalize();
 
         // Generate the line segment that is in the same direction we expect.
         let forward = first - second;
